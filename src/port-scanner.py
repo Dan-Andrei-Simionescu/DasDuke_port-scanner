@@ -2,27 +2,42 @@ import socket
 import ports
 import CL_arguments
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 def scan_port(target, port):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(0.5)
     result = sock.connect_ex((target, port))
     sock.close()
-    return result == 0
+    return port, result == 0
 
 if __name__ == "__main__":
-    print(f"Scanning ports...")
+    target = CL_arguments.args.target
+    start_port = CL_arguments.start_port
+    end_port = CL_arguments.end_port
 
-    found_anything = False
+    print(f"    ＞ Scanning {target} ports {start_port}-{end_port}...")
 
-    for port in range(CL_arguments.start_port, CL_arguments.end_port + 1):
-        is_open = scan_port(CL_arguments.args.target, port)
+    open_ports = []
+
+    with ThreadPoolExecutor(max_workers=100) as executor:
+        futures = {
+            executor.submit(scan_port, target, port): port
+            for port in range(start_port, end_port + 1)
+        }
         
-        if is_open:
-            port_name = ports.find_port_name(port)
-            print(f"Port {port_name} is open!")
-            found_anything = True
-    
-    if not found_anything:
-        print("Nothing found.")
+        for future in as_completed(futures):
+            port, is_open = future.result()
+            if is_open:
+                open_ports.append(port)
 
-    print("Scan complete.")
+    open_ports.sort()
+
+    if open_ports:
+        for port in open_ports:
+            port_name = ports.find_port_name(port)
+            print(f"      ⦕ Port {port_name} is open!")
+    else:
+        print("      !!! Nothing found.")
+
+    print("    Scan complete.")
