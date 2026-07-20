@@ -3,6 +3,9 @@ import os
 # empty dictionary
 port_dict = {}
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SERVICES_FILE = os.path.join(BASE_DIR, "services.txt")
+
 def load_services_file(filename="services.txt"):
     with open(filename, 'r') as file:
         for line in file:
